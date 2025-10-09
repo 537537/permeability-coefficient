@@ -47,12 +47,12 @@ div[data-testid="stNumberInput"] > label {
 </style>
 """, unsafe_allow_html=True)
 
-# ========== 标题区 ==========
+# ========== 标题 ==========
 st.markdown("<h1 style='text-align:center;'>💧 Pervious Concrete Permeability Prediction System</h1>", unsafe_allow_html=True)
-st.markdown("<h4 style='text-align:center; color:#1E88E5;'>Enter the following mix parameters to predict the Permeability Coefficient (PEC)</h4>", unsafe_allow_html=True)
+st.markdown("<h4 style='text-align:center; color:#1E88E5;'>Enter the following parameters to predict the Permeability Coefficient (PEC)</h4>", unsafe_allow_html=True)
 st.markdown("---")
 
-# ========== 模型与标准化器路径 ==========
+# ========== 模型路径 ==========
 MODEL_PATH = "final_xgboost_model.pkl"
 SCALER_PATH = "scaler.pkl"
 
@@ -62,10 +62,7 @@ else:
     model = joblib.load(MODEL_PATH)
     scaler = joblib.load(SCALER_PATH)
 
-    # ========== 输入区布局 ==========
-    st.subheader("🔹 Input Parameters")
-
-    # 第一行：W/C, A/C, Dmin
+    # ========== 第一行输入 ==========
     col1, col2, col3 = st.columns(3)
     with col1:
         W_C = st.number_input("W/C (Water-Cement Ratio)", min_value=0.0, value=0.3, step=0.01)
@@ -74,31 +71,32 @@ else:
     with col3:
         Dmin = st.number_input("Dmin (Minimum Aggregate Size, mm)", min_value=0.0, value=4.75, step=0.1)
 
-    # 第二行：Dmax, Porosity, SS
+    # ========== 第二行输入 ==========
     col4, col5, col6 = st.columns(3)
     with col4:
         Dmax = st.number_input("Dmax (Maximum Aggregate Size, mm)", min_value=0.0, value=9.5, step=0.1)
     with col5:
         Porosity = st.number_input("Porosity (%)", min_value=0.0, value=15.0, step=0.1)
     with col6:
-        shape_option = st.selectbox("SS (Specimen Shape)", ["Cylinder", "Cube"])
+        shape_option = st.selectbox("Specimen Shape (SS)", ["Cylinder", "Cube"])
         SS = 1 if shape_option == "Cylinder" else 2
 
-    # 第三行：SD, SH, TM
+    # ========== 第三行输入 ==========
     col7, col8, col9 = st.columns(3)
     with col7:
-        SD = st.number_input("SD (Specimen Diameter, mm)", min_value=0.0, value=100.0, step=1.0)
+        SD = st.number_input("Specimen Diameter (SD, mm)", min_value=0.0, value=100.0, step=1.0)
     with col8:
-        SH = st.number_input("SH (Specimen Height, mm)", min_value=0.0, value=200.0, step=1.0)
+        SH = st.number_input("Specimen Height (SH, mm)", min_value=0.0, value=200.0, step=1.0)
     with col9:
-        TM = st.number_input("TM (Test Method Code)", min_value=0.0, value=1.0, step=0.1)
+        tm_option = st.selectbox("Test Method (TM)", ["Constant Head", "Fall Head"])
+        TM = 1 if tm_option == "Constant Head" else 2
 
     # ========== 预测按钮 ==========
     st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
-    predict_button = st.button("🔍 Predict Permeability Coefficient (PEC)")
+    predict_button = st.button("🔍 Predict PEC")
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # ========== 预测逻辑 ==========
+    # ========== 执行预测 ==========
     if predict_button:
         try:
             input_data = np.array([[W_C, A_C, Dmin, Dmax, Porosity, SS, SD, SH, TM]])
@@ -114,3 +112,5 @@ else:
             """, unsafe_allow_html=True)
         except Exception as e:
             st.error(f"⚠️ Prediction failed: {e}")
+
+
