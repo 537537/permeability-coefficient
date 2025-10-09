@@ -63,26 +63,39 @@ else:
     scaler = joblib.load(SCALER_PATH)
 
     # ========== 输入区布局 ==========
-    col1, col2, col3 = st.columns(3)
+    st.subheader("🔹 Input Parameters")
 
+    # 第一行：W/C, A/C, Dmin
+    col1, col2, col3 = st.columns(3)
     with col1:
         W_C = st.number_input("W/C (Water-Cement Ratio)", min_value=0.0, value=0.3, step=0.01)
-        Dmin = st.number_input("Dmin (Minimum Aggregate Size, mm)", min_value=0.0, value=4.75, step=0.1)
-        Porosity = st.number_input("Porosity (%)", min_value=0.0, value=15.0, step=0.1)
-
     with col2:
         A_C = st.number_input("A/C (Aggregate-Cement Ratio)", min_value=0.0, value=4.0, step=0.1)
-        Dmax = st.number_input("Dmax (Maximum Aggregate Size, mm)", min_value=0.0, value=9.5, step=0.1)
-        SS = st.number_input("SS (Shape Strength Factor)", min_value=0.0, value=1.0, step=0.1)
-
     with col3:
-        SD = st.number_input("SD (Diameter Strength Factor)", min_value=0.0, value=1.0, step=0.1)
-        SH = st.number_input("SH (Height Strength Factor)", min_value=0.0, value=1.0, step=0.1)
+        Dmin = st.number_input("Dmin (Minimum Aggregate Size, mm)", min_value=0.0, value=4.75, step=0.1)
+
+    # 第二行：Dmax, Porosity, SS
+    col4, col5, col6 = st.columns(3)
+    with col4:
+        Dmax = st.number_input("Dmax (Maximum Aggregate Size, mm)", min_value=0.0, value=9.5, step=0.1)
+    with col5:
+        Porosity = st.number_input("Porosity (%)", min_value=0.0, value=15.0, step=0.1)
+    with col6:
+        shape_option = st.selectbox("SS (Specimen Shape)", ["Cylinder", "Cube"])
+        SS = 1 if shape_option == "Cylinder" else 2
+
+    # 第三行：SD, SH, TM
+    col7, col8, col9 = st.columns(3)
+    with col7:
+        SD = st.number_input("SD (Specimen Diameter, mm)", min_value=0.0, value=100.0, step=1.0)
+    with col8:
+        SH = st.number_input("SH (Specimen Height, mm)", min_value=0.0, value=200.0, step=1.0)
+    with col9:
         TM = st.number_input("TM (Test Method Code)", min_value=0.0, value=1.0, step=0.1)
 
     # ========== 预测按钮 ==========
     st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
-    predict_button = st.button("🔍 Predict PEC")
+    predict_button = st.button("🔍 Predict Permeability Coefficient (PEC)")
     st.markdown("</div>", unsafe_allow_html=True)
 
     # ========== 预测逻辑 ==========
