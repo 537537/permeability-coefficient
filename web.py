@@ -121,25 +121,23 @@ else:
             </div>
             """, unsafe_allow_html=True)
 
-            # ========== SHAP Force Plot (Matplotlib 方案) ==========
+            # ========== SHAP Force Plot (Matplotlib 方案 - 已修复) ==========
             st.markdown("### 🔹 SHAP Force Plot (Feature Contributions)")
 
             # 创建 explainer 并计算 SHAP 值
             explainer = shap.Explainer(model)
             shap_values = explainer(input_scaled)
 
-            # 【关键修改】将 SHAP force plot 渲染为 Matplotlib 静态图像
-            # 1. 创建一个 matplotlib 图形对象 (figure) 和坐标轴 (axes)
-            fig, ax = plt.subplots()
+            # 【关键修改】
+            # 1. 调用 shap.plots.force() 并捕获它返回的 figure 对象
+            #    注意：这里不再传入 ax 参数
+            force_plot_fig = shap.plots.force(shap_values[0], matplotlib=True, show=False)
             
-            # 2. 调用 shap.plots.force 并设置 matplotlib=True，将图画在指定的坐标轴上
-            shap.plots.force(shap_values[0], matplotlib=True, show=False, ax=ax)
+            # 2. 将捕获到的 figure 对象传递给 st.pyplot()
+            st.pyplot(force_plot_fig, bbox_inches='tight')
             
-            # 3. 使用 st.pyplot() 在 Streamlit 中显示该图形对象
-            st.pyplot(fig, bbox_inches='tight')
-            
-            # 4. 关闭图形对象以释放内存，防止在脚本后续运行中出现问题
-            plt.close(fig)
+            # 3. 关闭 figure 对象以释放内存
+            plt.close(force_plot_fig)
 
         except Exception as e:
             st.error(f"⚠️ Prediction failed: {e}")
