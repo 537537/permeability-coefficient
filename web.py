@@ -83,7 +83,7 @@ else:
     with col4:
         Dmax = st.number_input("Maximum Aggregate Size (Dmax, mm)", min_value=0.0, value=9.5, step=0.1)
     with col5:
-        Porosity = st.number_input("Porosity (Porosity, %)", min_value=0.0, value=15.0, step=0.1)
+        Porosity = st.number_input("Porosity (%)", min_value=0.0, value=15.0, step=0.1)
     with col6:
         shape_option = st.selectbox("Specimen Shape (SS)", ["Cylinder", "Cube"])
         SS = 1 if shape_option == "Cylinder" else 2
@@ -139,5 +139,6 @@ else:
             st.error(f"⚠️ Prediction failed: {e}")
 
    
+
 
 
