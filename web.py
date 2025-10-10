@@ -2,7 +2,8 @@ import streamlit as st
 import numpy as np
 import joblib
 import os
-import matplotlib.pyplot as plt
+import shap
+import streamlit.components.v1 as components
 
 # ========== 页面配置 ==========
 st.set_page_config(page_title="Pervious Concrete Permeability Prediction",
@@ -92,10 +93,6 @@ else:
         tm_option = st.selectbox("Test Method (TM)", ["Constant Head", "Fall Head"])
         TM = 1 if tm_option == "Constant Head" else 2
 
-    # ========== 初始化历史预测记录 ==========
-    if "predictions" not in st.session_state:
-        st.session_state["predictions"] = []
-
     # ========== 预测按钮 ==========
     st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
     predict_button = st.button("🔍 Predict PEC")
@@ -104,27 +101,26 @@ else:
     # ========== 执行预测 ==========
     if predict_button:
         try:
+            # 构造输入数据
             input_data = np.array([[W_C, A_C, Dmin, Dmax, Porosity, SS, SD, SH, TM]])
             input_scaled = scaler.transform(input_data)
             prediction = model.predict(input_scaled)[0]
-            st.session_state["predictions"].append(prediction)
 
+            # 显示预测结果
             st.markdown(f"""
             <div class="result-card">
                 <h2>✅ Predicted Permeability Coefficient (PEC)</h2>
-                <h1 style="color:#0D47A1;">{prediction:.4f} mm/s</h1>
+                <h1 style="color:#0D47A1;">{prediction:.6f} mm/s</h1>
             </div>
             """, unsafe_allow_html=True)
 
-            # ========== 可视化预测值分布 ==========
-            st.markdown("### 📊 Prediction Value Distribution")
-            fig, ax = plt.subplots()
-            ax.hist(st.session_state["predictions"], bins=10, edgecolor='black', alpha=0.7)
-            ax.axvline(prediction, color='red', linestyle='--', label=f'Current: {prediction:.4f}')
-            ax.set_xlabel("Predicted PEC (mm/s)")
-            ax.set_ylabel("Frequency")
-            ax.legend()
-            st.pyplot(fig)
+            # ========== SHAP Force Plot ==========
+            st.markdown("### 🔹 SHAP Force Plot (Feature Contributions)")
+            explainer = shap.Explainer(model)
+            shap_values = explainer(input_scaled)
+
+            force_plot_html = shap.plots.force(shap_values[0], matplotlib=False, show=False)
+            components.html(force_plot_html.html(), height=300)
 
         except Exception as e:
             st.error(f"⚠️ Prediction failed: {e}")
