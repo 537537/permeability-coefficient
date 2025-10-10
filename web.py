@@ -1,110 +1,168 @@
 import streamlit as st
-import joblib
 import numpy as np
+import joblib
+import os
 
-# ========== 页面设置 ==========
+# ========== 页面配置 ==========
 st.set_page_config(page_title="Permeability Coefficient Predictor", page_icon="💧", layout="centered")
 
-# ========== 自定义样式 ==========
-st.markdown("""
+# ========== 恢复原始风格 CSS (Times New Roman + 蓝色按钮) ==========
+st.markdown(
+    """
     <style>
+    * { font-family: 'Times New Roman', serif; }
+    
     body {
-        background-color: #f8f9fa;
+        background-color: #f7f9fc;
     }
-    .main-title {
+
+    .title {
         text-align: center;
-        font-size: 32px;
-        color: #003366;
-        font-weight: bold;
-        margin-bottom: 10px;
+        color: #0D47A1;
+        font-size: 28px;
+        margin-bottom: 4px;
     }
-    .sub-title {
+    .subtitle {
         text-align: center;
-        font-size: 16px;
+        color: #1565C0;
+        font-size: 14px;
+        margin-bottom: 18px;
+    }
+
+    /* 按钮样式（蓝） */
+    div.stButton > button {
+        background-color: #007BFF; 
+        color: white;
+        border-radius: 6px;
+        border: 1px solid #0056b3;
+        padding: 10px 24px;
+        font-size: 15px;
+        font-weight: 600;
+    }
+    div.stButton > button:hover {
+        background-color: #0056b3;
+    }
+
+    /* 小提示文本样式（框下简写/单位） */
+    .small-note {
         color: #555;
-        margin-bottom: 30px;
+        font-size: 12px;
+        margin-top: 4px;
     }
-    .stButton>button {
-        background-color: #0066cc;
-        color: white;
-        border-radius: 10px;
-        height: 3em;
-        width: 100%;
-        font-size: 16px;
-    }
-    .stButton>button:hover {
-        background-color: #004c99;
-        color: white;
-    }
-    .result-box {
-        text-align: center;
-        background-color: white;
-        padding: 20px;
+
+    /* 结果卡片 */
+    .result-card {
+        background: white;
         border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        margin-top: 20px;
+        padding: 18px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+        text-align: center;
+        margin-top: 18px;
     }
     </style>
-""", unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True,
+)
 
 # ========== 标题 ==========
-st.markdown('<p class="main-title">Permeability Coefficient Prediction App</p>', unsafe_allow_html=True)
-st.markdown('<p class="sub-title">Predict the permeability coefficient (PEC) of pervious concrete using a trained XGBoost model</p>', unsafe_allow_html=True)
+st.markdown("<div class='title'>Permeability Coefficient Prediction</div>", unsafe_allow_html=True)
+st.markdown("<div class='subtitle'>Use the trained XGBoost model to predict PEC (unit: mm/s)</div>", unsafe_allow_html=True)
+st.markdown("---")
 
-# ========== 加载模型和标准化器 ==========
+# ========== 模型与 scaler 路径 ==========
 MODEL_PATH = "final_xgboost_model.pkl"
 SCALER_PATH = "scaler.pkl"
 
-model = joblib.load(MODEL_PATH)
-scaler = joblib.load(SCALER_PATH)
-
-# ========== 输入部分 ==========
-st.markdown("### 🧮 Input Parameters")
-
-# 第一行
-col1, col2, col3 = st.columns(3)
-with col1:
-    wc = st.number_input("Water-Cement Ratio (W/C)", min_value=0.0, step=0.01, format="%.2f", placeholder="W/C")
-with col2:
-    ac = st.number_input("Aggregate-Cement Ratio (A/C)", min_value=0.0, step=0.01, format="%.2f", placeholder="A/C")
-with col3:
-    dmin = st.number_input("Minimum Aggregate Size (Dmin, mm)", min_value=0.0, step=0.1, format="%.1f", placeholder="Dmin (mm)")
-
-# 第二行
-col4, col5, col6 = st.columns(3)
-with col4:
-    dmax = st.number_input("Maximum Aggregate Size (Dmax, mm)", min_value=0.0, step=0.1, format="%.1f", placeholder="Dmax (mm)")
-with col5:
-    porosity = st.number_input("Porosity (%)", min_value=0.0, step=0.1, format="%.1f", placeholder="Porosity (%)")
-with col6:
-    ss = st.number_input("Specimen Shape (SS)", min_value=1, max_value=3, step=1, placeholder="SS")
-
-# 第三行
-col7, col8, col9 = st.columns(3)
-with col7:
-    sd = st.number_input("Specimen Diameter (SD, mm)", min_value=0.0, step=1.0, format="%.0f", placeholder="SD (mm)")
-with col8:
-    sh = st.number_input("Specimen Height (SH, mm)", min_value=0.0, step=1.0, format="%.0f", placeholder="SH (mm)")
-with col9:
-    test_method = st.selectbox("Test Method (TM)", ["Constant Head (1)", "Fall Head (2)"])
-    test_method_value = 1 if "Constant" in test_method else 2
-
-# ========== 预测 ==========
-if st.button("🔮 Predict Permeability Coefficient"):
+if not os.path.exists(MODEL_PATH) or not os.path.exists(SCALER_PATH):
+    st.error("Model or scaler file is missing! Please ensure final_xgboost_model.pkl and scaler.pkl are in the app folder.")
+else:
+    # 加载模型
     try:
-        # 组装输入数据
-        input_data = np.array([[wc, ac, dmin, dmax, porosity, ss, sd, sh, test_method_value]])
-        input_scaled = scaler.transform(input_data)
-        prediction = model.predict(input_scaled)[0]
-
-        # 显示结果
-        st.markdown(f"""
-        <div class="result-box">
-            <h3>Predicted Permeability Coefficient (mm/s)</h3>
-            <p style="font-size:26px; color:#0073e6; font-weight:bold;">{prediction:.6f}</p>
-        </div>
-        """, unsafe_allow_html=True)
-
+        model = joblib.load(MODEL_PATH)
+        scaler = joblib.load(SCALER_PATH)
     except Exception as e:
-        st.error(f"An error occurred during prediction: {e}")
+        st.error(f"Failed to load model/scaler: {e}")
+        st.stop()
+
+    # ========== 输入区（3 行，每行 3 列） ==========
+    st.markdown("### Input Parameters")
+
+    # 第一行: W/C, A/C, Dmin
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("**Water-Cement Ratio**")              # 框外全称
+        wc = st.number_input("", min_value=0.0, step=0.01, format="%.2f", value=0.30, key="wc")
+        st.markdown("<div class='small-note'>(W/C)</div>", unsafe_allow_html=True)
+
+    with col2:
+        st.markdown("**Aggregate-Cement Ratio**")
+        ac = st.number_input("", min_value=0.0, step=0.01, format="%.2f", value=4.00, key="ac")
+        st.markdown("<div class='small-note'>(A/C)</div>", unsafe_allow_html=True)
+
+    with col3:
+        st.markdown("**Minimum Aggregate Size**")
+        dmin = st.number_input("", min_value=0.0, step=0.1, format="%.1f", value=4.75, key="dmin")
+        st.markdown("<div class='small-note'>(Dmin, mm)</div>", unsafe_allow_html=True)
+
+    # 第二行: Dmax, Porosity, Specimen Shape
+    col4, col5, col6 = st.columns(3)
+    with col4:
+        st.markdown("**Maximum Aggregate Size**")
+        dmax = st.number_input("", min_value=0.0, step=0.1, format="%.1f", value=9.50, key="dmax")
+        st.markdown("<div class='small-note'>(Dmax, mm)</div>", unsafe_allow_html=True)
+
+    with col5:
+        st.markdown("**Porosity**")
+        porosity = st.number_input("", min_value=0.0, step=0.1, format="%.1f", value=15.0, key="porosity")
+        st.markdown("<div class='small-note'>(Porosity, %)</div>", unsafe_allow_html=True)
+
+    with col6:
+        st.markdown("**Specimen Shape**")
+        ss_option = st.selectbox("", ["Cylinder", "Cube"], key="ss_option")
+        # Specimen Shape 编码：Cylinder -> 1, Cube -> 2
+        ss = 1 if ss_option == "Cylinder" else 2
+        st.markdown("<div class='small-note'>(SS: Cylinder=1, Cube=2)</div>", unsafe_allow_html=True)
+
+    # 第三行: Specimen Diameter, Specimen Height, Test Method
+    col7, col8, col9 = st.columns(3)
+    with col7:
+        st.markdown("**Specimen Diameter**")
+        sd = st.number_input("", min_value=0.0, step=1.0, format="%.0f", value=100.0, key="sd")
+        st.markdown("<div class='small-note'>(SD, mm)</div>", unsafe_allow_html=True)
+
+    with col8:
+        st.markdown("**Specimen Height**")
+        sh = st.number_input("", min_value=0.0, step=1.0, format="%.0f", value=200.0, key="sh")
+        st.markdown("<div class='small-note'>(SH, mm)</div>", unsafe_allow_html=True)
+
+    with col9:
+        st.markdown("**Test Method**")
+        tm_option = st.selectbox("", ["Constant Head (1)", "Fall Head (2)"], key="tm_option")
+        tm = 1 if "Constant" in tm_option else 2
+        st.markdown("<div class='small-note'>(TM: Constant Head=1, Fall Head=2)</div>", unsafe_allow_html=True)
+
+    # ========== 预测按钮 ==========
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("Predict Permeability Coefficient"):
+        try:
+            # 组装输入 (顺序与模型训练一致)
+            input_data = np.array([[wc, ac, dmin, dmax, porosity, ss, sd, sh, tm]])
+            # 标准化并预测
+            input_scaled = scaler.transform(input_data)
+            prediction = model.predict(input_scaled)[0]
+
+            # 结果展示（单位 mm/s）
+            st.markdown(f"""
+                <div class="result-card">
+                    <h3>Predicted Permeability Coefficient (mm/s)</h3>
+                    <p style="color:#0D47A1; font-size:22px; font-weight:700;">{prediction:.6f} mm/s</p>
+                </div>
+            """, unsafe_allow_html=True)
+
+            # 可选：显示输入摘要，便于核对
+            st.write("**Input summary:**", f"W/C={wc}, A/C={ac}, Dmin={dmin} mm, Dmax={dmax} mm, Porosity={porosity}%, SS={ss} ({ss_option}), SD={sd} mm, SH={sh} mm, TM={tm} ({tm_option})")
+
+        except Exception as e:
+            st.error(f"Prediction failed: {e}")
+
 
