@@ -4,6 +4,7 @@ import joblib
 import os
 import shap
 import streamlit.components.v1 as components
+import st_shap # 导入 st_shap 库
 
 # ========== 页面配置 ==========
 st.set_page_config(page_title="Pervious Concrete Permeability Prediction",
@@ -61,8 +62,14 @@ SCALER_PATH = "scaler.pkl"
 if not os.path.exists(MODEL_PATH) or not os.path.exists(SCALER_PATH):
     st.error("❌ Model or scaler file is missing! Please check the file paths.")
 else:
-    model = joblib.load(MODEL_PATH)
-    scaler = joblib.load(SCALER_PATH)
+    # 使用缓存来加载模型和scaler，避免每次交互都重新加载，提高性能
+    @st.cache_resource
+    def load_model_and_scaler():
+        model = joblib.load(MODEL_PATH)
+        scaler = joblib.load(SCALER_PATH)
+        return model, scaler
+
+    model, scaler = load_model_and_scaler()
 
     # ========== 输入参数布局 ==========
     # 第一行
@@ -115,14 +122,16 @@ else:
             </div>
             """, unsafe_allow_html=True)
 
-            # ========== SHAP Force Plot ==========
+            # ========== SHAP Force Plot (已修复) ==========
             st.markdown("### 🔹 SHAP Force Plot (Feature Contributions)")
+            
+            # 创建 explainer 并计算 SHAP 值
+            # XGBoost模型的explainer建议使用shap.TreeExplainer或shap.Explainer
             explainer = shap.Explainer(model)
             shap_values = explainer(input_scaled)
-
-            # 生成 Force Plot HTML 并嵌入 Streamlit
-            force_plot_obj = shap.plots.force(shap_values[0], matplotlib=False, show=False)
-            components.html(force_plot_obj.html(), height=400, scrolling=True)
+            
+            # 【关键修改】使用 st_shap.shap_explanation 来正确显示交互式 force plot
+            st_shap.shap_explanation(shap_values[0])
 
         except Exception as e:
             st.error(f"⚠️ Prediction failed: {e}")
