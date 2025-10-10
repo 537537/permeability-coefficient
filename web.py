@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np
 import joblib
 import os
+import matplotlib.pyplot as plt
 
 # ========== 页面配置 ==========
 st.set_page_config(page_title="Pervious Concrete Permeability Prediction",
@@ -39,23 +40,17 @@ div[data-testid="stNumberInput"] > label {
 .result-card {
     background: white;
     border-radius: 15px;
-    padding: 30px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    padding: 25px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     text-align: center;
     margin-top: 25px;
-}
-.subtitle {
-    text-align: center;
-    color: #1E88E5;
-    font-size: 18px;
-    margin-bottom: 10px;
 }
 </style>
 """, unsafe_allow_html=True)
 
 # ========== 标题 ==========
 st.markdown("<h1 style='text-align:center;'>💧 Pervious Concrete Permeability Prediction System</h1>", unsafe_allow_html=True)
-st.markdown("<div class='subtitle'>Enter the following parameters to predict the Permeability Coefficient (PEC)</div>", unsafe_allow_html=True)
+st.markdown("<h4 style='text-align:center; color:#1E88E5;'>Enter the following parameters to predict the Permeability Coefficient (PEC)</h4>", unsafe_allow_html=True)
 st.markdown("---")
 
 # ========== 模型路径 ==========
@@ -65,7 +60,6 @@ SCALER_PATH = "scaler.pkl"
 if not os.path.exists(MODEL_PATH) or not os.path.exists(SCALER_PATH):
     st.error("❌ Model or scaler file is missing! Please check the file paths.")
 else:
-    # 加载模型与标准化器
     model = joblib.load(MODEL_PATH)
     scaler = joblib.load(SCALER_PATH)
 
@@ -98,47 +92,39 @@ else:
         tm_option = st.selectbox("Test Method (TM)", ["Constant Head", "Fall Head"])
         TM = 1 if tm_option == "Constant Head" else 2
 
+    # ========== 初始化历史预测记录 ==========
+    if "predictions" not in st.session_state:
+        st.session_state["predictions"] = []
+
     # ========== 预测按钮 ==========
-    st.markdown("<div style='text-align:center; margin-top:20px;'>", unsafe_allow_html=True)
-    predict_button = st.button("🔍 Predict Permeability Coefficient (PEC)")
+    st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
+    predict_button = st.button("🔍 Predict PEC")
     st.markdown("</div>", unsafe_allow_html=True)
 
     # ========== 执行预测 ==========
     if predict_button:
         try:
-            # 输入拼接
             input_data = np.array([[W_C, A_C, Dmin, Dmax, Porosity, SS, SD, SH, TM]])
             input_scaled = scaler.transform(input_data)
             prediction = model.predict(input_scaled)[0]
+            st.session_state["predictions"].append(prediction)
 
-            # 结果展示
             st.markdown(f"""
             <div class="result-card">
                 <h2>✅ Predicted Permeability Coefficient (PEC)</h2>
-                <h1 style="color:#0D47A1; font-size:40px;">{prediction:.6f}</h1>
-                <p style="color:gray; font-size:16px;">Unit: <b>mm/s</b></p>
+                <h1 style="color:#0D47A1;">{prediction:.4f} mm/s</h1>
             </div>
             """, unsafe_allow_html=True)
 
-            # 输入信息总结（可隐藏）
-            st.markdown("---")
-            st.write("**Input Summary:**")
-            st.json({
-                "W/C": W_C,
-                "A/C": A_C,
-                "Dmin (mm)": Dmin,
-                "Dmax (mm)": Dmax,
-                "Porosity (%)": Porosity,
-                "Specimen Shape (1=Cylinder, 2=Cube)": SS,
-                "Specimen Diameter (mm)": SD,
-                "Specimen Height (mm)": SH,
-                "Test Method (1=Constant Head, 2=Fall Head)": TM
-            })
+            # ========== 可视化预测值分布 ==========
+            st.markdown("### 📊 Prediction Value Distribution")
+            fig, ax = plt.subplots()
+            ax.hist(st.session_state["predictions"], bins=10, edgecolor='black', alpha=0.7)
+            ax.axvline(prediction, color='red', linestyle='--', label=f'Current: {prediction:.4f}')
+            ax.set_xlabel("Predicted PEC (mm/s)")
+            ax.set_ylabel("Frequency")
+            ax.legend()
+            st.pyplot(fig)
 
         except Exception as e:
             st.error(f"⚠️ Prediction failed: {e}")
-
-   
-
-
-
