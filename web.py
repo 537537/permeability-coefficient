@@ -119,8 +119,10 @@ else:
             explainer = shap.Explainer(model)
             shap_values = explainer(input_scaled)
 
+            # 生成 Force Plot HTML
             force_plot_html = shap.plots.force(shap_values[0], matplotlib=False, show=False)
             components.html(force_plot_html.html(), height=300)
 
         except Exception as e:
             st.error(f"⚠️ Prediction failed: {e}")
+
