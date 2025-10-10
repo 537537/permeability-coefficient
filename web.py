@@ -3,8 +3,7 @@ import numpy as np
 import joblib
 import os
 import shap
-import streamlit.components.v1 as components
-import st_shap # 导入 st_shap 库
+import matplotlib.pyplot as plt # 导入 matplotlib 库
 
 # ========== 页面配置 ==========
 st.set_page_config(page_title="Pervious Concrete Permeability Prediction",
@@ -122,16 +121,25 @@ else:
             </div>
             """, unsafe_allow_html=True)
 
-            # ========== SHAP Force Plot (已修复) ==========
+            # ========== SHAP Force Plot (Matplotlib 方案) ==========
             st.markdown("### 🔹 SHAP Force Plot (Feature Contributions)")
-            
+
             # 创建 explainer 并计算 SHAP 值
-            # XGBoost模型的explainer建议使用shap.TreeExplainer或shap.Explainer
             explainer = shap.Explainer(model)
             shap_values = explainer(input_scaled)
+
+            # 【关键修改】将 SHAP force plot 渲染为 Matplotlib 静态图像
+            # 1. 创建一个 matplotlib 图形对象 (figure) 和坐标轴 (axes)
+            fig, ax = plt.subplots()
             
-            # 【关键修改】使用 st_shap.shap_explanation 来正确显示交互式 force plot
-            st_shap.shap_explanation(shap_values[0])
+            # 2. 调用 shap.plots.force 并设置 matplotlib=True，将图画在指定的坐标轴上
+            shap.plots.force(shap_values[0], matplotlib=True, show=False, ax=ax)
+            
+            # 3. 使用 st.pyplot() 在 Streamlit 中显示该图形对象
+            st.pyplot(fig, bbox_inches='tight')
+            
+            # 4. 关闭图形对象以释放内存，防止在脚本后续运行中出现问题
+            plt.close(fig)
 
         except Exception as e:
             st.error(f"⚠️ Prediction failed: {e}")
