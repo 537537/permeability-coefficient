@@ -135,21 +135,26 @@ else:
             # 创建 explainer
             explainer = shap.Explainer(model)
             
-            # 将带有列名的 DataFrame 传递给 explainer，得到 Explanation 对象
-            explanation = explainer(input_scaled_df)
-
-            # 【关键修改】在绘图前，将 Explanation 对象中的数据四舍五入到两位小数
-            # 这只会影响图表上的显示，不会影响 SHAP 值的计算结果
-            explanation.data = np.round(explanation.data, 2)
-
-            # 调用 shap.plots.force() 并捕获它返回的 figure 对象
-            # 现在，它将使用我们刚刚四舍五入过的数据进行绘图
-            force_plot_fig = shap.plots.force(explanation[0], matplotlib=True, show=False)
+            # 1. 计算出包含所有信息的完整 Explanation 对象
+            full_explanation = explainer(input_scaled_df)
             
-            # 将捕获到的 figure 对象传递给 st.pyplot()
+            # 【关键修改】创建一个新的、仅用于绘图的 Explanation 对象
+            # 我们保留 SHAP 值、基准值和特征名，但将特征值数据(data)设为 None
+            # 这样绘图函数就只会显示特征名
+            plot_explanation = shap.Explanation(
+                values=full_explanation.values[0],
+                base_values=full_explanation.base_values[0],
+                data=None,  # 关键点：不提供特征值数据
+                feature_names=full_explanation.feature_names
+            )
+            
+            # 2. 将这个“无数据”的 Explanation 对象传递给绘图函数
+            force_plot_fig = shap.plots.force(plot_explanation, matplotlib=True, show=False)
+            
+            # 3. 将捕获到的 figure 对象传递给 st.pyplot()
             st.pyplot(force_plot_fig, bbox_inches='tight')
             
-            # 关闭 figure 对象以释放内存
+            # 4. 关闭 figure 对象以释放内存
             plt.close(force_plot_fig)
 
         except Exception as e:
