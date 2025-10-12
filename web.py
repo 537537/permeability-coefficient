@@ -4,7 +4,7 @@ import joblib
 import os
 import shap
 import matplotlib.pyplot as plt
-import pandas as pd  # 【关键修改1】导入 pandas 库
+import pandas as pd
 
 # ========== 页面配置 ==========
 st.set_page_config(page_title="Pervious Concrete Permeability Prediction",
@@ -109,14 +109,14 @@ else:
     # ========== 执行预测 ==========
     if predict_button:
         try:
-            # 【关键修改2】定义特征名称列表，顺序必须与 input_data 中的变量顺序完全一致
+            # 定义特征名称列表
             feature_names = ['W/C', 'A/C', 'Dmin', 'Dmax', 'Porosity', 'SS', 'SD', 'SH', 'TM']
             
             # 构造输入数据
             input_data = np.array([[W_C, A_C, Dmin, Dmax, Porosity, SS, SD, SH, TM]])
             input_scaled = scaler.transform(input_data)
             
-            # 【关键修改3】将Numpy数组转换为带有列名的Pandas DataFrame
+            # 将Numpy数组转换为带有列名的Pandas DataFrame
             input_scaled_df = pd.DataFrame(input_scaled, columns=feature_names)
 
             prediction = model.predict(input_scaled)[0]
@@ -135,12 +135,16 @@ else:
             # 创建 explainer
             explainer = shap.Explainer(model)
             
-            # 【关键修改4】将带有列名的 DataFrame 传递给 explainer
-            shap_values = explainer(input_scaled_df)
+            # 将带有列名的 DataFrame 传递给 explainer，得到 Explanation 对象
+            explanation = explainer(input_scaled_df)
+
+            # 【关键修改】在绘图前，将 Explanation 对象中的数据四舍五入到两位小数
+            # 这只会影响图表上的显示，不会影响 SHAP 值的计算结果
+            explanation.data = np.round(explanation.data, 2)
 
             # 调用 shap.plots.force() 并捕获它返回的 figure 对象
-            # shap_values[0] 包含了特征名称和值，绘图函数会自动使用它们
-            force_plot_fig = shap.plots.force(shap_values[0], matplotlib=True, show=False)
+            # 现在，它将使用我们刚刚四舍五入过的数据进行绘图
+            force_plot_fig = shap.plots.force(explanation[0], matplotlib=True, show=False)
             
             # 将捕获到的 figure 对象传递给 st.pyplot()
             st.pyplot(force_plot_fig, bbox_inches='tight')
@@ -150,4 +154,3 @@ else:
 
         except Exception as e:
             st.error(f"⚠️ Prediction failed: {e}")
-
