@@ -138,18 +138,22 @@ else:
             # 1. 计算出包含所有信息的完整 Explanation 对象
             full_explanation = explainer(input_scaled_df)
             
-            # 【关键修改】创建一个新的、仅用于绘图的 Explanation 对象
-            # 我们保留 SHAP 值、基准值和特征名，但将特征值数据(data)设为 None
-            # 这样绘图函数就只会显示特征名
+            # 创建一个新的、仅用于绘图的 Explanation 对象 (不显示数值)
             plot_explanation = shap.Explanation(
                 values=full_explanation.values[0],
                 base_values=full_explanation.base_values[0],
-                data=None,  # 关键点：不提供特征值数据
+                data=None,
                 feature_names=full_explanation.feature_names
             )
             
             # 2. 将这个“无数据”的 Explanation 对象传递给绘图函数
-            force_plot_fig = shap.plots.force(plot_explanation, matplotlib=True, show=False)
+            # 【关键修改】添加 contribution_threshold=0 参数
+            force_plot_fig = shap.plots.force(
+                plot_explanation, 
+                matplotlib=True, 
+                show=False, 
+                contribution_threshold=0
+            )
             
             # 3. 将捕获到的 figure 对象传递给 st.pyplot()
             st.pyplot(force_plot_fig, bbox_inches='tight')
