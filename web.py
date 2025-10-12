@@ -3,7 +3,8 @@ import numpy as np
 import joblib
 import os
 import shap
-import matplotlib.pyplot as plt # 导入 matplotlib 库
+import matplotlib.pyplot as plt
+import pandas as pd  # 【关键修改1】导入 pandas 库
 
 # ========== 页面配置 ==========
 st.set_page_config(page_title="Pervious Concrete Permeability Prediction",
@@ -108,9 +109,16 @@ else:
     # ========== 执行预测 ==========
     if predict_button:
         try:
+            # 【关键修改2】定义特征名称列表，顺序必须与 input_data 中的变量顺序完全一致
+            feature_names = ['W/C', 'A/C', 'Dmin', 'Dmax', 'Porosity', 'SS', 'SD', 'SH', 'TM']
+            
             # 构造输入数据
             input_data = np.array([[W_C, A_C, Dmin, Dmax, Porosity, SS, SD, SH, TM]])
             input_scaled = scaler.transform(input_data)
+            
+            # 【关键修改3】将Numpy数组转换为带有列名的Pandas DataFrame
+            input_scaled_df = pd.DataFrame(input_scaled, columns=feature_names)
+
             prediction = model.predict(input_scaled)[0]
 
             # 显示预测结果
@@ -121,23 +129,25 @@ else:
             </div>
             """, unsafe_allow_html=True)
 
-            # ========== SHAP Force Plot (Matplotlib 方案 - 已修复) ==========
+            # ========== SHAP Force Plot ==========
             st.markdown("### 🔹 SHAP Force Plot (Feature Contributions)")
 
-            # 创建 explainer 并计算 SHAP 值
+            # 创建 explainer
             explainer = shap.Explainer(model)
-            shap_values = explainer(input_scaled)
+            
+            # 【关键修改4】将带有列名的 DataFrame 传递给 explainer
+            shap_values = explainer(input_scaled_df)
 
-            # 【关键修改】
-            # 1. 调用 shap.plots.force() 并捕获它返回的 figure 对象
-            #    注意：这里不再传入 ax 参数
+            # 调用 shap.plots.force() 并捕获它返回的 figure 对象
+            # shap_values[0] 包含了特征名称和值，绘图函数会自动使用它们
             force_plot_fig = shap.plots.force(shap_values[0], matplotlib=True, show=False)
             
-            # 2. 将捕获到的 figure 对象传递给 st.pyplot()
+            # 将捕获到的 figure 对象传递给 st.pyplot()
             st.pyplot(force_plot_fig, bbox_inches='tight')
             
-            # 3. 关闭 figure 对象以释放内存
+            # 关闭 figure 对象以释放内存
             plt.close(force_plot_fig)
 
         except Exception as e:
             st.error(f"⚠️ Prediction failed: {e}")
+
