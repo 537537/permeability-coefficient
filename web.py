@@ -72,7 +72,6 @@ else:
     model, scaler = load_model_and_scaler()
 
     # ========== 输入参数布局 ==========
-    # 第一行
     col1, col2, col3 = st.columns(3)
     with col1:
         W_C = st.number_input("Water-Cement Ratio (W/C)", min_value=0.0, value=0.30, step=0.01, format="%.2f")
@@ -81,7 +80,6 @@ else:
     with col3:
         Dmin = st.number_input("Minimum Aggregate Size (Dmin, mm)", min_value=0.0, value=4.75, step=0.01, format="%.2f")
 
-    # 第二行
     col4, col5, col6 = st.columns(3)
     with col4:
         Dmax = st.number_input("Maximum Aggregate Size (Dmax, mm)", min_value=0.0, value=9.50, step=0.01, format="%.2f")
@@ -91,7 +89,6 @@ else:
         shape_option = st.selectbox("Specimen Shape (SS)", ["Cylinder", "Cube"])
         SS = 1 if shape_option == "Cylinder" else 2
 
-    # 第三行
     col7, col8, col9 = st.columns(3)
     with col7:
         SD = st.number_input("Specimen Diameter (SD, mm)", min_value=0.0, value=100.0, step=1.0)
@@ -110,7 +107,6 @@ else:
     if predict_button:
         try:
             feature_names = ['W/C', 'A/C', 'Dmin', 'Dmax', 'Porosity', 'SS', 'SD', 'SH', 'TM']
-            
             input_data = np.array([[W_C, A_C, Dmin, Dmax, Porosity, SS, SD, SH, TM]])
             input_scaled = scaler.transform(input_data)
             input_scaled_df = pd.DataFrame(input_scaled, columns=feature_names)
@@ -125,20 +121,22 @@ else:
             </div>
             """, unsafe_allow_html=True)
 
-            # ========== SHAP Force Plot ==========
-            st.markdown("### 🔹 SHAP Force Plot (Feature Contributions)")
+            # ========== SHAP Force Plot (无 base value) ==========
+            st.markdown("### 🔹 SHAP Force Plot (Feature Contributions, base value removed)")
             explainer = shap.Explainer(model)
-            full_explanation = explainer(input_scaled_df)
+            shap_values = explainer(input_scaled_df)
+
             plot_explanation = shap.Explanation(
-                values=full_explanation.values[0],
-                base_values=full_explanation.base_values[0],
+                values=shap_values.values[0],
+                base_values=0,  # <- 设置为0，不显示 base value
                 data=None,
-                feature_names=full_explanation.feature_names
+                feature_names=shap_values.feature_names
             )
+
             force_plot_fig = shap.plots.force(
-                plot_explanation, 
-                matplotlib=True, 
-                show=False, 
+                plot_explanation,
+                matplotlib=True,
+                show=False,
                 contribution_threshold=0
             )
             st.pyplot(force_plot_fig, bbox_inches='tight')
@@ -146,4 +144,3 @@ else:
 
         except Exception as e:
             st.error(f"⚠️ Prediction failed: {e}")
-
