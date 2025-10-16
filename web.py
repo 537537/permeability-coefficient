@@ -56,8 +56,8 @@ st.markdown("<h4 style='text-align:center; color:#1E88E5;'>Enter the following p
 st.markdown("---")
 
 # ========== 模型路径 ==========
-MODEL_PATH = "final_xgboost_model.pkl"
-SCALER_PATH = "scaler.pkl"
+MODEL_PATH = "final_xgboost_model_1.pkl"
+SCALER_PATH = "scaler_1.pkl"
 
 if not os.path.exists(MODEL_PATH) or not os.path.exists(SCALER_PATH):
     st.error("❌ Model or scaler file is missing! Please check the file paths.")
@@ -163,3 +163,4 @@ else:
 
         except Exception as e:
             st.error(f"⚠️ Prediction failed: {e}")
+
