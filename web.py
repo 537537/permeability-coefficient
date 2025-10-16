@@ -62,7 +62,7 @@ SCALER_PATH = "scaler_1.pkl"
 if not os.path.exists(MODEL_PATH) or not os.path.exists(SCALER_PATH):
     st.error("❌ Model or scaler file is missing! Please check the file paths.")
 else:
-    # 使用缓存来加载模型和scaler，避免每次交互都重新加载，提高性能
+    # 使用缓存加载模型和scaler
     @st.cache_resource
     def load_model_and_scaler():
         model = joblib.load(MODEL_PATH)
@@ -75,18 +75,18 @@ else:
     # 第一行
     col1, col2, col3 = st.columns(3)
     with col1:
-        W_C = st.number_input("Water-Cement Ratio (W/C)", min_value=0.0, value=0.3, step=0.01)
+        W_C = st.number_input("Water-Cement Ratio (W/C)", min_value=0.0, value=0.30, step=0.01, format="%.2f")
     with col2:
-        A_C = st.number_input("Aggregate-Cement Ratio (A/C)", min_value=0.0, value=4.0, step=0.1)
+        A_C = st.number_input("Aggregate-Cement Ratio (A/C)", min_value=0.0, value=4.00, step=0.01, format="%.2f")
     with col3:
-        Dmin = st.number_input("Minimum Aggregate Size (Dmin, mm)", min_value=0.0, value=4.75, step=0.1)
+        Dmin = st.number_input("Minimum Aggregate Size (Dmin, mm)", min_value=0.0, value=4.75, step=0.01, format="%.2f")
 
     # 第二行
     col4, col5, col6 = st.columns(3)
     with col4:
-        Dmax = st.number_input("Maximum Aggregate Size (Dmax, mm)", min_value=0.0, value=9.5, step=0.1)
+        Dmax = st.number_input("Maximum Aggregate Size (Dmax, mm)", min_value=0.0, value=9.50, step=0.01, format="%.2f")
     with col5:
-        Porosity = st.number_input("Porosity (%)", min_value=0.0, value=15.0, step=0.1)
+        Porosity = st.number_input("Porosity (%)", min_value=0.0, value=15.00, step=0.01, format="%.2f")
     with col6:
         shape_option = st.selectbox("Specimen Shape (SS)", ["Cylinder", "Cube"])
         SS = 1 if shape_option == "Cylinder" else 2
@@ -109,14 +109,10 @@ else:
     # ========== 执行预测 ==========
     if predict_button:
         try:
-            # 定义特征名称列表
             feature_names = ['W/C', 'A/C', 'Dmin', 'Dmax', 'Porosity', 'SS', 'SD', 'SH', 'TM']
             
-            # 构造输入数据
             input_data = np.array([[W_C, A_C, Dmin, Dmax, Porosity, SS, SD, SH, TM]])
             input_scaled = scaler.transform(input_data)
-            
-            # 将Numpy数组转换为带有列名的Pandas DataFrame
             input_scaled_df = pd.DataFrame(input_scaled, columns=feature_names)
 
             prediction = model.predict(input_scaled)[0]
@@ -131,34 +127,21 @@ else:
 
             # ========== SHAP Force Plot ==========
             st.markdown("### 🔹 SHAP Force Plot (Feature Contributions)")
-
-            # 创建 explainer
             explainer = shap.Explainer(model)
-            
-            # 1. 计算出包含所有信息的完整 Explanation 对象
             full_explanation = explainer(input_scaled_df)
-            
-            # 创建一个新的、仅用于绘图的 Explanation 对象 (不显示数值)
             plot_explanation = shap.Explanation(
                 values=full_explanation.values[0],
                 base_values=full_explanation.base_values[0],
                 data=None,
                 feature_names=full_explanation.feature_names
             )
-            
-            # 2. 将这个“无数据”的 Explanation 对象传递给绘图函数
-            # 【关键修改】添加 contribution_threshold=0 参数
             force_plot_fig = shap.plots.force(
                 plot_explanation, 
                 matplotlib=True, 
                 show=False, 
                 contribution_threshold=0
             )
-            
-            # 3. 将捕获到的 figure 对象传递给 st.pyplot()
             st.pyplot(force_plot_fig, bbox_inches='tight')
-            
-            # 4. 关闭 figure 对象以释放内存
             plt.close(force_plot_fig)
 
         except Exception as e:
