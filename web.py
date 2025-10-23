@@ -1,146 +1,99 @@
 import streamlit as st
-import numpy as np
-import joblib
-import os
-import shap
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 
 # ========== 页面配置 ==========
-st.set_page_config(page_title="Pervious Concrete Permeability Prediction",
-                   page_icon="💧",
-                   layout="wide")
+st.set_page_config(page_title='韧性强度预测演示平台', page_icon='🧪', layout='wide')
 
 # ========== 自定义CSS美化 ==========
 st.markdown("""
 <style>
-body {
-    background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
-    font-family: 'Segoe UI', sans-serif;
+.stApp {
+    background: linear-gradient(135deg, #f7fbff 0%, #eef6ff 100%);
+    color: #0f172a;
 }
-h1, h2, h3 {
-    color: #0D47A1;
-}
-.stButton > button {
-    background: linear-gradient(90deg, #1976D2, #0D47A1);
-    color: white;
-    border: none;
-    border-radius: 10px;
-    padding: 10px 25px;
-    font-size: 17px;
-    font-weight: bold;
-    transition: 0.3s;
-}
-.stButton > button:hover {
-    background: linear-gradient(90deg, #0D47A1, #1976D2);
-    transform: scale(1.05);
-}
-div[data-testid="stNumberInput"] > label {
-    font-weight: 600;
-    color: #1A237E;
-}
-.result-card {
+.card {
     background: white;
-    border-radius: 15px;
-    padding: 25px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    text-align: center;
-    margin-top: 25px;
+    border-radius: 12px;
+    padding: 18px;
+    box-shadow: 0 6px 18px rgba(47,84,162,0.08);
+}
+.big-btn button {
+    background: linear-gradient(90deg,#2563eb,#60a5fa) !important;
+    color: white !important;
+    border-radius: 10px !important;
+    padding: 10px 18px !important;
+    font-weight: 600 !important;
+}
+.result-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: #064e3b;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# ========== 标题 ==========
-st.markdown("<h1 style='text-align:center;'>💧 Pervious Concrete Permeability Prediction System</h1>", unsafe_allow_html=True)
-st.markdown("<h4 style='text-align:center; color:#1E88E5;'>Enter the following parameters to predict the Permeability Coefficient (PEC)</h4>", unsafe_allow_html=True)
-st.markdown("---")
+# ========== 页面结构 ==========
+with st.sidebar.container():
+    st.header('说明')
+    st.write('此页面为韧性强度预测系统的**外观演示版**。')
+    st.write('当前未加载真实模型，所有预测结果固定为 **4.75**。')
+    st.write('输入框、按钮、图表功能保持原样，仅用于展示界面布局。')
 
-# ========== 模型路径 ==========
-MODEL_PATH = "final_xgboost_model_1.pkl"
-SCALER_PATH = "scaler_1.pkl"
+st.title('韧性强度预测 (演示版)')
+col1, col2 = st.columns([1, 1])
 
-if not os.path.exists(MODEL_PATH) or not os.path.exists(SCALER_PATH):
-    st.error("❌ Model or scaler file is missing! Please check the file paths.")
+with col1:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.subheader('输入参数')
+
+    wb = st.number_input('水胶比 (Water-Binder ratio)', min_value=0.20, max_value=0.80, value=0.35, step=0.01)
+    flyash = st.number_input('粉煤灰占胶凝材料比例 (%)', min_value=0.0, max_value=60.0, value=10.0, step=0.5)
+    silica = st.number_input('硅灰占胶凝材料比例 (%)', min_value=0.0, max_value=20.0, value=5.0, step=0.1)
+    slag = st.number_input('矿粉占胶凝材料比例 (%)', min_value=0.0, max_value=60.0, value=20.0, step=0.5)
+    far = st.selectbox('纤维长径比 (Aspect Ratio)', options=[1000, 1200, 1500, 2000], index=2)
+    fv = st.number_input('纤维掺量 (体积分数 %)', min_value=0.00, max_value=5.00, value=0.50, step=0.05)
+    cement = st.number_input('水泥用量 (kg/m³)', min_value=100.0, max_value=1000.0, value=750.0, step=10.0)
+    sand = st.number_input('砂用量 (kg/m³)', min_value=0.0, max_value=2000.0, value=600.0, step=10.0)
+    sp = st.number_input('减水剂掺量 (%)', min_value=0.0, max_value=5.0, value=1.0, step=0.1)
+
+    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('<div style="height:18px"></div>', unsafe_allow_html=True)
+
+    predict_btn = st.button('预测', key='predict', help='点击进行韧性强度预测')
+
+with col2:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.subheader('预测结果')
+    result_placeholder = st.empty()
+    shap_placeholder = st.empty()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# ========== 预测逻辑（固定输出） ==========
+if predict_btn:
+    Tf = 4.75  # 固定预测结果
+    html_result = f"""
+    <div class='card' style='text-align:center'>
+      <div style='font-size:14px;color:#64748b'>预测韧性强度 (无量纲折压比)</div>
+      <div class='result-value'>{Tf:.2f}</div>
+      <div style='color:#475569;margin-top:6px;font-size:13px'>演示版固定输出</div>
+    </div>
+    """
+    result_placeholder.markdown(html_result, unsafe_allow_html=True)
+
+    # 模拟SHAP条形图
+    fig, ax = plt.subplots(figsize=(6,3))
+    fake_features = ['wb','flyash','silica','slag','far','fv','cement','sand','sp']
+    fake_values = np.random.uniform(-0.05, 0.05, size=len(fake_features))
+    pd.Series(fake_values, index=fake_features).sort_values().plot(kind='barh', ax=ax)
+    ax.set_title('SHAP 特征贡献 (演示图)')
+    ax.set_xlabel('贡献度')
+    st.pyplot(fig)
+
 else:
-    # 使用缓存加载模型和scaler
-    @st.cache_resource
-    def load_model_and_scaler():
-        model = joblib.load(MODEL_PATH)
-        scaler = joblib.load(SCALER_PATH)
-        return model, scaler
-
-    model, scaler = load_model_and_scaler()
-
-    # ========== 输入参数布局 ==========
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        W_C = st.number_input("Water-Cement Ratio (W/C)", min_value=0.0, value=0.30, step=0.01, format="%.2f")
     with col2:
-        A_C = st.number_input("Aggregate-Cement Ratio (A/C)", min_value=0.0, value=4.00, step=0.01, format="%.2f")
-    with col3:
-        Dmin = st.number_input("Minimum Aggregate Size (Dmin, mm)", min_value=0.0, value=4.75, step=0.01, format="%.2f")
+        st.info('输入参数后点击“预测”可获得演示结果 (固定为4.75)。')
 
-    col4, col5, col6 = st.columns(3)
-    with col4:
-        Dmax = st.number_input("Maximum Aggregate Size (Dmax, mm)", min_value=0.0, value=9.50, step=0.01, format="%.2f")
-    with col5:
-        Porosity = st.number_input("Porosity (%)", min_value=0.0, value=15.00, step=0.01, format="%.2f")
-    with col6:
-        shape_option = st.selectbox("Specimen Shape (SS)", ["Cylinder", "Cube"])
-        SS = 1 if shape_option == "Cylinder" else 2
-
-    col7, col8, col9 = st.columns(3)
-    with col7:
-        SD = st.number_input("Specimen Diameter (SD, mm)", min_value=0.0, value=100.0, step=1.0)
-    with col8:
-        SH = st.number_input("Specimen Height (SH, mm)", min_value=0.0, value=200.0, step=1.0)
-    with col9:
-        tm_option = st.selectbox("Test Method (TM)", ["Constant Head", "Fall Head"])
-        TM = 1 if tm_option == "Constant Head" else 2
-
-    # ========== 预测按钮 ==========
-    st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
-    predict_button = st.button("🔍 Predict PEC")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    # ========== 执行预测 ==========
-    if predict_button:
-        try:
-            feature_names = ['W/C', 'A/C', 'Dmin', 'Dmax', 'Porosity', 'SS', 'SD', 'SH', 'TM']
-            input_data = np.array([[W_C, A_C, Dmin, Dmax, Porosity, SS, SD, SH, TM]])
-            input_scaled = scaler.transform(input_data)
-            input_scaled_df = pd.DataFrame(input_scaled, columns=feature_names)
-
-            prediction = model.predict(input_scaled)[0]
-
-            # 显示预测结果
-            st.markdown(f"""
-            <div class="result-card">
-                <h2>✅ Predicted Permeability Coefficient (PEC)</h2>
-                <h1 style="color:#0D47A1;">{prediction:.6f} mm/s</h1>
-            </div>
-            """, unsafe_allow_html=True)
-
-            # ========== SHAP Force Plot (无 base value) ==========
-            st.markdown("### 🔹 SHAP Force Plot (Feature Contributions, base value removed)")
-            explainer = shap.Explainer(model)
-            shap_values = explainer(input_scaled_df)
-
-            plot_explanation = shap.Explanation(
-                values=shap_values.values[0],
-                base_values=0,  # <- 设置为0，不显示 base value
-                data=None,
-                feature_names=shap_values.feature_names
-            )
-
-            force_plot_fig = shap.plots.force(
-                plot_explanation,
-                matplotlib=True,
-                show=False,
-                contribution_threshold=0
-            )
-            st.pyplot(force_plot_fig, bbox_inches='tight')
-            plt.close(force_plot_fig)
-
-        except Exception as e:
-            st.error(f"⚠️ Prediction failed: {e}")
+st.markdown('<hr />', unsafe_allow_html=True)
+st.markdown('**说明：** 本系统为演示用途，展示模型预测界面布局及交互效果，不执行真实机器学习推理。', unsafe_allow_html=True)
